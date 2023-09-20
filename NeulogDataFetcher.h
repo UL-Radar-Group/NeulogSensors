@@ -3,46 +3,40 @@
 
 #include <QtWidgets>
 #include <QtNetwork>
-#include <QtCharts>
+#include "qcustomplot.h"
 
 class NeulogDataFetcher : public QObject {
     Q_OBJECT
 public:
-    NeulogDataFetcher(QChartView* chartView) : chartView_(chartView) {
+    NeulogDataFetcher(QCustomPlot* customPlot) : customPlot_(customPlot) {
         manager_ = new QNetworkAccessManager(this);
         connect(manager_, &QNetworkAccessManager::finished, this, &NeulogDataFetcher::onDataReceived);
 
-        // Create a series for Pulse and Respiration data
-        pulseSeries_ = new QLineSeries();
-        pulseSeries_->setName("Pulse");
-        respirationSeries_ = new QLineSeries();
-        respirationSeries_->setName("Respiration");
+        // Create a graphs for Pulse and Respiration data
+        pulseGraph_ = customPlot_->addGraph();
+        pulseGraph_->setName("Pulse");
+        pulseGraph_->setPen(QPen(PulseColor));
 
-        // Create a chart and add the series
-        chart_ = new QChart();
-        chart_->addSeries(pulseSeries_);
-        chart_->addSeries(respirationSeries_);
-        chart_->setTitle("Sensor Data");
-        chart_->createDefaultAxes();
-
-        // Assuming you have X and Y axes defined in your chart
-        chart_->axes(Qt::Horizontal).first()->setRange(0, maxDataPoints);
-        chart_->axes(Qt::Vertical).first()->setRange(0, 600); // Customize the Y-axis range as needed
-
-        // Set the chart to the chart view
-        chartView_->setChart(chart_);
+        respirationGraph_ = customPlot_->addGraph(customPlot->xAxis, customPlot->yAxis2);
+        respirationGraph_->setName("Respiration");
+        respirationGraph_->setPen(QPen(RespirationColor));
 
         // Create a timer for periodic data fetching (adjust the interval as needed)
         dataFetchTimer_ = new QTimer(this);
         connect(dataFetchTimer_, &QTimer::timeout, this, &NeulogDataFetcher::fetchData);
-        dataFetchTimer_->start(100); // Fetch data every 1000 milliseconds (1 second)
+        dataFetchTimer_->start(FrameRate); // Fetch data every 100 milliseconds
+        startTime_ = QDateTime::currentDateTime();
     }
+    const QColor PulseColor = QColor(Qt::red); // Color for pulse sensor
+    const QColor RespirationColor = QColor(Qt::blue); // Color for respiration sensor
+    const int xAxisRange = 30; // Visible time range in [s]
+    const int FrameRate = 100; // Update time in [ms] (should be larger then 80)
 
 
 public slots:
     void fetchData() {
         // Record the time before making the API request
-        requestTime = QDateTime::currentDateTime();
+        requestTime_ = QDateTime::currentDateTime();
 
         QUrl url("http://localhost:22004/NeuLogAPI?GetSensorValue:[Pulse],[1],[Respiration],[1]");
         QNetworkRequest request(url);
@@ -52,7 +46,7 @@ private slots:
     void onDataReceived(QNetworkReply* reply) {
         if (reply->error() == QNetworkReply::NoError) {
             auto data = reply->readAll();
-            qDebug() << "Data received after" << requestTime.msecsTo(QDateTime::currentDateTime()) << "ms";
+            qDebug() << "Data received after" << requestTime_.msecsTo(QDateTime::currentDateTime()) << "ms";
 
             QJsonDocument jsonDoc = QJsonDocument::fromJson(data);
             if (!jsonDoc.isNull()) {
@@ -74,29 +68,23 @@ private slots:
     }
 
     void updateChart(int pulseValue, int respirationValue) {
-        // Add new data points to the series
-        pulseSeries_->append(xValue, pulseValue);
-        respirationSeries_->append(xValue, respirationValue);
-        xValue++;
+        // Add new data points to the graph
+        double time = startTime_.msecsTo(QDateTime::currentDateTime()) / 1000.;
+        pulseGraph_->addData(time, pulseValue);
+        respirationGraph_->addData(time, respirationValue);
 
-        // Limit the number of data points displayed (e.g., show only the last 20 points)
-        if (pulseSeries_->count() > maxDataPoints) {
-            pulseSeries_->remove(0);
-            respirationSeries_->remove(0);
-            chart_->axes(Qt::Horizontal).first()->setRange(xValue - maxDataPoints, xValue);
-        }
+        // Redraw the custom plot
+        customPlot_->xAxis->setRange(time - xAxisRange, time);
+        customPlot_->replot();
     }
 
 private:
     QNetworkAccessManager* manager_;
-    QChartView* chartView_;
-    QChart* chart_;
-    QLineSeries* pulseSeries_;
-    QLineSeries* respirationSeries_;
+    QCustomPlot * customPlot_;
+    QCPGraph* pulseGraph_;
+    QCPGraph* respirationGraph_;
     QTimer *dataFetchTimer_;
-    QDateTime requestTime;
-
-    const int maxDataPoints = 30;
-    int xValue = 0;
+    QDateTime requestTime_;
+    QDateTime startTime_;
 };
 #endif // NEULOGDATAFETCHER_H
