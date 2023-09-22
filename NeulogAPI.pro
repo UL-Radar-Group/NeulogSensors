@@ -14,12 +14,15 @@ SOURCES += \
     qcustomplot.cpp
 
 HEADERS += \
-    NeulogDataFetcher.h \
+    data_plotter.h \
     mainwindow.h \
+    neulog_data_fetcher.h \
     qcustomplot.h
 
 FORMS += \
     mainwindow.ui
+
+LIBS += -lPsapi
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
