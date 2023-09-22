@@ -11,6 +11,8 @@ public:
     const QColor respirationColor_ = QColor(Qt::blue); // Color for respiration sensor
     const int xAxisRange_ = 30; // Visible time range in [s]
 
+    QVector<double> save;
+    bool wrote=false;
     DataPlotter(QCustomPlot* customPlot) : customPlot_(customPlot) {
         // Create a QCPGraph for Pulse and Respiration data
         pulseGraph_ = customPlot_->addGraph();
@@ -55,6 +57,21 @@ public slots:
         // Add new data points to the graph
         double time = startTime_.msecsTo(QDateTime::currentDateTime()) / 1000.;
         pulseGraph_->addData(time, pulseValue);
+
+        save.append(time);
+        save.append(respirationValue);
+        if(wrote==false){
+            if(save.length()>300*2){
+
+                QFile file("log.bin");
+                if(file.open(QFile::WriteOnly)){
+                    file.write((char*)save.data(),save.length()*8);
+                    wrote=true;
+                    file.flush();
+                    file.close();
+                }
+            }
+        }
         respirationGraph_->addData(time, respirationValue);
 
         // Redraw the custom plot

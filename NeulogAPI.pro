@@ -1,6 +1,6 @@
 QT       += core gui
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets charts network printsupport
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets network printsupport
 
 CONFIG += c++17
 
