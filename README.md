@@ -8,7 +8,7 @@ Example applications to fetch and visualize data from NeuLog sensors
 2. Connect USB module to PC
 3. Run Neulog API
 4. Connection should be established automatically
-![](.doc/NeuLog_API_status.png)
+![](doc/NeuLog_API_status.png)
 
 
 ## Qt example
@@ -20,4 +20,4 @@ Configuration:
 - MinGW 64bit
 
 Preview
-![](.doc/preview.png)
+![](doc/preview.png)
